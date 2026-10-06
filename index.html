@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Nuova spesa</title>
+<style>
+:root{
+  --bg:#EEF3F1; --card:#FFFFFF; --ink:#10201C; --mute:#5B6F69; --line:#D5E0DC;
+  --accent:#0F766E; --accent-ink:#FFFFFF; --warn:#B45309; --bad:#B42318; --chip:#E1EBE7;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1715; --card:#16231F; --ink:#E7F0ED; --mute:#8FA59E; --line:#26362F;
+    --accent:#2DD4BF; --accent-ink:#06201C; --warn:#F5A524; --bad:#F97066; --chip:#1F302A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1715; --card:#16231F; --ink:#E7F0ED; --mute:#8FA59E; --line:#26362F;
+  --accent:#2DD4BF; --accent-ink:#06201C; --warn:#F5A524; --bad:#F97066; --chip:#1F302A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);min-height:100%;
+  font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  font-variant-numeric:tabular-nums;
+}
+.app{max-width:520px;margin:0 auto;padding:20px 20px 40px}
+h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
+.amount{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--line);padding-bottom:6px}
+.amount:focus-within{border-color:var(--accent)}
+.amount.err{border-color:var(--bad)}
+#amount{
+  flex:1;min-width:0;font:inherit;font-size:3.4rem;font-weight:700;letter-spacing:-.02em;
+  color:var(--ink);background:transparent;border:0;padding:0;outline:none;
+}
+#amount::placeholder{color:var(--line)}
+.eur{font-size:2rem;font-weight:600;color:var(--mute)}
+.group{margin-top:22px}
+.group h2{margin:0 0 8px;font-size:.95rem;font-weight:500;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  font:inherit;font-size:1.05rem;color:var(--ink);background:var(--chip);
+  border:2px solid transparent;border-radius:999px;padding:10px 16px;cursor:pointer;min-height:44px;
+}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:650}
+.group.err .chip{border-color:var(--bad)}
+#note{
+  width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:var(--card);
+  border:2px solid var(--line);border-radius:12px;padding:12px 14px;
+}
+#note:focus{border-color:var(--accent);outline:none}
+.save{
+  width:100%;margin-top:22px;font:inherit;font-size:1.15rem;font-weight:650;border:0;border-radius:12px;
+  padding:16px;background:var(--accent);color:var(--accent-ink);cursor:pointer;
+}
+.save:disabled{opacity:.6;cursor:default}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.status{min-height:1.5em;margin:10px 0 0;font-size:.95rem;color:var(--mute);line-height:1.4}
+.status.ok{color:var(--accent)} .status.bad{color:var(--bad)}
+.banner{margin:0 0 16px;padding:12px 14px;border-radius:12px;background:var(--card);border:1px solid var(--warn);color:var(--warn);font-size:.95rem;line-height:1.4}
+.log{list-style:none;margin:28px 0 0;padding:0}
+.log h2{margin:0 0 6px;font-size:.95rem;font-weight:500;color:var(--mute)}
+.log li{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line);font-size:1.02rem}
+.log li:last-child{border-bottom:1px solid var(--line)}
+.log .d{color:var(--mute);font-size:.88rem}
+.log .pend{color:var(--warn);font-size:.88rem}
+.cfg{margin-top:28px;color:var(--mute)}
+.cfg summary{cursor:pointer;padding:10px 0;font-size:.95rem}
+.cfgnote{margin:0 0 10px;font-size:.9rem;line-height:1.4}
+.field{
+  width:100%;margin-bottom:10px;font:inherit;font-size:1rem;color:var(--ink);background:var(--card);
+  border:2px solid var(--line);border-radius:12px;padding:12px 14px;
+}
+.field:focus{border-color:var(--accent);outline:none}
+</style>
+</head>
+<body>
+<main class="app">
+  <p id="setup" class="banner" hidden>Prima di usarla, collega il foglio dalla sezione in fondo alla pagina.</p>
+  <h1>Nuova spesa</h1>
+
+  <div id="amountWrap" class="amount">
+    <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Importo in euro">
+    <span class="eur">€</span>
+  </div>
+
+  <div id="catGroup" class="group">
+    <h2>Categoria</h2>
+    <div id="cats" class="chips"></div>
+  </div>
+
+  <div class="group">
+    <h2>Pagato con</h2>
+    <div id="pays" class="chips"></div>
+  </div>
+
+  <div class="group">
+    <h2>Nota (facoltativa)</h2>
+    <input id="note" type="text" autocomplete="off" enterkeyhint="done" placeholder="Es. Esselunga, pizza con amici">
+  </div>
+
+  <button id="save" class="save" type="button">Salva spesa</button>
+  <p id="status" class="status" aria-live="polite"></p>
+
+  <section class="log" aria-label="Ultime spese">
+    <h2>Ultime inserite</h2>
+    <ul id="log" style="list-style:none;margin:0;padding:0"></ul>
+  </section>
+
+  <details id="cfg" class="cfg">
+    <summary>Collegamento al foglio</summary>
+    <p class="cfgnote">Questi due dati restano solo su questo telefono, non nel codice del sito.</p>
+    <input id="cfgUrl" class="field" type="url" autocomplete="off" placeholder="URL dell'app web di Google" aria-label="URL dell'app web di Google">
+    <input id="cfgToken" class="field" type="text" autocomplete="off" placeholder="Parola segreta" aria-label="Parola segreta">
+    <button id="cfgSave" class="save" type="button">Salva collegamento</button>
+  </details>
+</main>
+
+<script>
+(function(){
+  var CATS = ['Cibo','Carburante','Trasporti','Svago','Casa','Salute','Altro'];
+  var PAYS = ['Apple Pay','Carta','Contanti','Buoni pasto'];
+
+  var $ = function(id){ return document.getElementById(id); };
+  function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
+  function store(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+  // Il collegamento al foglio vive solo nel browser del telefono, mai nel codice su GitHub.
+  // Si imposta una volta aprendo la pagina con #u=URL&t=PAROLA, oppure dal pannello in fondo.
+  (function(){
+    var h = location.hash.replace(/^#/, '');
+    if (h){
+      var p = new URLSearchParams(h);
+      if (p.get('u')){ store('spese-url', p.get('u')); store('spese-token', p.get('t') || ''); }
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  })();
+  var CONFIG = { url: load('spese-url', ''), token: load('spese-token', '') };
+
+  var cat = null, pay = load('spese-pay', PAYS[0]);
+  var log = load('spese-log', []);
+  var busy = false;
+
+  $('cfgUrl').value = CONFIG.url; $('cfgToken').value = CONFIG.token;
+  if (!CONFIG.url){ $('setup').hidden = false; $('cfg').open = true; }
+  $('cfgSave').onclick = function(){
+    var u = $('cfgUrl').value.trim(), t = $('cfgToken').value.trim();
+    if (!/^https:\/\/script\.google\.com\//.test(u)){ say("Incolla l'URL dell'app web di Google, che inizia con https://script.google.com/", 'bad'); return; }
+    store('spese-url', u); store('spese-token', t);
+    CONFIG.url = u; CONFIG.token = t;
+    $('setup').hidden = true; $('cfg').open = false;
+    say('Collegamento salvato su questo telefono.', 'ok'); flush();
+  };
+
+  function eur(n){ return n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+  function say(msg, kind){ var s = $('status'); s.textContent = msg; s.className = 'status' + (kind ? ' ' + kind : ''); }
+
+  function chips(box, list, get, set){
+    box.innerHTML = '';
+    list.forEach(function(name){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = name;
+      b.setAttribute('aria-pressed', String(get() === name));
+      b.onclick = function(){ set(name); draw(); };
+      box.appendChild(b);
+    });
+  }
+  function draw(){
+    chips($('cats'), CATS, function(){ return cat; }, function(v){ cat = v; $('catGroup').classList.remove('err'); });
+    chips($('pays'), PAYS, function(){ return pay; }, function(v){ pay = v; store('spese-pay', v); });
+  }
+
+  function drawLog(){
+    var ul = $('log'); ul.innerHTML = '';
+    if (!log.length){ var e = document.createElement('li'); e.style.color = 'var(--mute)'; e.textContent = 'Ancora nessuna spesa.'; ul.appendChild(e); return; }
+    log.slice(-5).reverse().forEach(function(x){
+      var li = document.createElement('li');
+      var l = document.createElement('span');
+      l.textContent = eur(x.importo) + ' · ' + x.categoria;
+      var r = document.createElement('span');
+      r.className = x.sent ? 'd' : 'pend';
+      r.textContent = x.sent ? x.pagamento : 'In attesa di invio';
+      li.appendChild(l); li.appendChild(r); ul.appendChild(li);
+    });
+  }
+
+  function parse(s){
+    s = s.replace(/€/g,'').replace(/\s/g,'').replace(',','.');
+    if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+    var n = parseFloat(s);
+    return (n > 0 && n < 100000) ? n : null;
+  }
+
+  function send(x){
+    if (!CONFIG.url) return Promise.resolve(false);
+    var body = JSON.stringify({ token: CONFIG.token, id: x.id, data: x.data, importo: x.importo,
+      categoria: x.categoria, pagamento: x.pagamento, nota: x.nota });
+    return fetch(CONFIG.url, { method: 'POST', body: body })
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (j && j.ok){ x.sent = true; return true; } throw new Error(j && j.error || 'errore'); })
+      .catch(function(){ return false; });
+  }
+
+  function flush(){
+    var pending = log.filter(function(x){ return !x.sent; });
+    return pending.reduce(function(p, x){ return p.then(function(){ return send(x); }); }, Promise.resolve())
+      .then(function(){ store('spese-log', log.slice(-30)); drawLog(); });
+  }
+
+  function save(){
+    if (busy) return;
+    var n = parse($('amount').value);
+    $('amountWrap').classList.toggle('err', n === null);
+    $('catGroup').classList.toggle('err', !cat);
+    if (n === null){ say('Scrivi un importo valido, per esempio 12,50.', 'bad'); $('amount').focus(); return; }
+    if (!cat){ say('Scegli una categoria.', 'bad'); return; }
+
+    var x = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), data: new Date().toISOString(),
+      importo: n, categoria: cat, pagamento: pay, nota: $('note').value.trim(), sent: false };
+    log.push(x); store('spese-log', log.slice(-30));
+    busy = true; $('save').disabled = true; say('Salvo...');
+
+    send(x).then(function(ok){
+      store('spese-log', log.slice(-30));
+      busy = false; $('save').disabled = false;
+      $('amount').value = ''; $('note').value = ''; cat = null; draw(); drawLog();
+      if (ok) say('Salvata: ' + eur(n) + ' in ' + x.categoria + '.', 'ok');
+      else say(CONFIG.url ? 'Non sono riuscito a inviarla. Resta in attesa e riprovo alla prossima apertura.' : 'Salvata solo su questo telefono: manca il collegamento al foglio.', 'bad');
+      $('amount').focus();
+    });
+  }
+
+  $('save').onclick = save;
+  $('amount').addEventListener('input', function(){ $('amountWrap').classList.remove('err'); });
+  $('note').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); save(); } });
+  window.addEventListener('online', flush);
+
+  draw(); drawLog(); flush();
+})();
+</script>
+</body>
+</html>
