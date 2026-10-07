@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spese">
+<meta name="theme-color" content="#0F766E">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Nuova spesa</title>
 <style>
 :root{
@@ -125,7 +129,7 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
 <script>
 (function(){
   var CATS = ['Cibo','Carburante','Trasporti','Svago','Casa','Salute','Altro'];
-  var PAYS = ['Apple Pay','Carta','Contanti','Buoni pasto'];
+  var PAYS = ['Carta','Contanti','Buoni pasto'];
 
   var $ = function(id){ return document.getElementById(id); };
   function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -144,6 +148,7 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
   var CONFIG = { url: load('spese-url', ''), token: load('spese-token', '') };
 
   var cat = null, pay = load('spese-pay', PAYS[0]);
+  if (PAYS.indexOf(pay) === -1) pay = PAYS[0];
   var log = load('spese-log', []);
   var busy = false;
 
