@@ -39,11 +39,11 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
 .amount{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--line);padding-bottom:6px}
 .amount:focus-within{border-color:var(--accent)}
 .amount.err{border-color:var(--bad)}
-#amount{
+#amount,#rImporto{
   flex:1;min-width:0;font:inherit;font-size:3.4rem;font-weight:700;letter-spacing:-.02em;
   color:var(--ink);background:transparent;border:0;padding:0;outline:none;
 }
-#amount::placeholder{color:var(--line)}
+#amount::placeholder,#rImporto::placeholder{color:var(--line)}
 .eur{font-size:2rem;font-weight:600;color:var(--mute)}
 .group{margin-top:22px}
 .group h2{margin:0 0 8px;font-size:.95rem;font-weight:500;color:var(--mute)}
@@ -82,13 +82,26 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
   border:2px solid var(--line);border-radius:12px;padding:12px 14px;
 }
 .field:focus{border-color:var(--accent);outline:none}
+.seg{display:flex;gap:6px;padding:4px;margin:0 0 8px;background:var(--chip);border-radius:14px}
+.seg button{flex:1;font:inherit;font-size:1.05rem;color:var(--ink);background:transparent;border:0;border-radius:10px;padding:10px;min-height:44px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:650}
+.hint{margin:6px 0 0;font-size:.88rem;color:var(--mute)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row2 .field{margin-bottom:0}
+.preview{min-height:1.4em;margin:16px 0 0;font-size:.95rem;line-height:1.45;color:var(--mute)}
+.preview.warn{color:var(--warn)}
 </style>
 </head>
 <body>
 <main class="app">
   <p id="setup" class="banner" hidden>Prima di usarla, collega il foglio dalla sezione in fondo alla pagina.</p>
-  <h1>Nuova spesa</h1>
+  <h1 id="titolo">Nuova spesa</h1>
+  <div class="seg" role="group" aria-label="Cosa vuoi aggiungere">
+    <button id="tabSpesa" type="button" aria-pressed="true">Spesa</button>
+    <button id="tabRata" type="button" aria-pressed="false">Rata</button>
+  </div>
 
+  <div id="viewSpesa">
   <div id="amountWrap" class="amount">
     <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Importo in euro">
     <span class="eur">€</span>
@@ -110,6 +123,46 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
   </div>
 
   <button id="save" class="save" type="button">Salva spesa</button>
+  </div>
+
+  <div id="viewRata" hidden>
+    <div id="rImportoWrap" class="amount">
+      <input id="rImporto" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-label="Importo di ogni rata in euro">
+      <span class="eur">€</span>
+    </div>
+    <p class="hint">Importo di ogni rata</p>
+
+    <div class="group">
+      <h2>Cosa è</h2>
+      <input id="rVoce" class="field" type="text" autocomplete="off" placeholder="Es. Telefono, Divano" aria-label="Nome della rata">
+    </div>
+
+    <div class="group">
+      <h2>Quante rate</h2>
+      <div id="rDurate" class="chips"></div>
+      <input id="rDurata" class="field" type="number" inputmode="numeric" min="1" max="120" placeholder="Oppure scrivi il numero" aria-label="Numero di rate" style="margin-top:10px">
+    </div>
+
+    <div class="group row2">
+      <div>
+        <h2>Giorno di addebito</h2>
+        <input id="rGiorno" class="field" type="number" inputmode="numeric" min="1" max="31" placeholder="Es. 24" aria-label="Giorno del mese in cui viene addebitata">
+      </div>
+      <div>
+        <h2>Prima rata a</h2>
+        <input id="rInizio" class="field" type="month" aria-label="Mese della prima rata">
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Nota (facoltativa)</h2>
+      <input id="rNota" class="field" type="text" autocomplete="off" enterkeyhint="done" placeholder="Es. senza interessi">
+    </div>
+
+    <p id="rAnteprima" class="preview" aria-live="polite"></p>
+    <button id="rSave" class="save" type="button">Salva rata</button>
+  </div>
+
   <p id="status" class="status" aria-live="polite"></p>
 
   <section class="log" aria-label="Ultime spese">
@@ -152,6 +205,14 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
   var log = load('spese-log', []);
   var busy = false;
 
+  // Ultima scheda mensile presente nel foglio: le rate oltre questo mese non vengono scritte
+  var ULTIMO_MESE = '2027-09';
+  var DURATE = [1, 3, 6, 12, 24];
+  var MESI_IT = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  function ymIdx(ym){ var m = /^(\d{4})-(\d{2})$/.exec(ym || ''); return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null; }
+  function ymLabel(i){ return MESI_IT[i % 12] + ' ' + Math.floor(i / 12); }
+  function oggiYm(){ var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+
   $('cfgUrl').value = CONFIG.url; $('cfgToken').value = CONFIG.token;
   if (!CONFIG.url){ $('setup').hidden = false; $('cfg').open = true; }
   $('cfgSave').onclick = function(){
@@ -187,10 +248,11 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
     log.slice(-5).reverse().forEach(function(x){
       var li = document.createElement('li');
       var l = document.createElement('span');
-      l.textContent = eur(x.importo) + ' · ' + x.categoria;
+      var rata = x.tipo === 'rata';
+      l.textContent = rata ? eur(x.importo) + ' × ' + x.durata + ' · ' + x.voce : eur(x.importo) + ' · ' + x.categoria;
       var r = document.createElement('span');
       r.className = x.sent ? 'd' : 'pend';
-      r.textContent = x.sent ? x.pagamento : 'In attesa di invio';
+      r.textContent = x.sent ? (rata ? 'da ' + ymLabel(ymIdx(x.inizio)) : x.pagamento) : 'In attesa di invio';
       li.appendChild(l); li.appendChild(r); ul.appendChild(li);
     });
   }
@@ -204,11 +266,21 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
 
   function send(x){
     if (!CONFIG.url) return Promise.resolve(false);
-    var body = JSON.stringify({ token: CONFIG.token, id: x.id, data: x.data, importo: x.importo,
-      categoria: x.categoria, pagamento: x.pagamento, nota: x.nota });
-    return fetch(CONFIG.url, { method: 'POST', body: body })
+    var payload = x.tipo === 'rata'
+      ? { token: CONFIG.token, tipo: 'rata', id: x.id, voce: x.voce, importo: x.importo, giorno: x.giorno,
+          inizio: x.inizio, durata: x.durata, nota: x.nota }
+      : { token: CONFIG.token, id: x.id, data: x.data, importo: x.importo,
+          categoria: x.categoria, pagamento: x.pagamento, nota: x.nota };
+    return fetch(CONFIG.url, { method: 'POST', body: JSON.stringify(payload) })
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j && j.ok){ x.sent = true; return true; } throw new Error(j && j.error || 'errore'); })
+      .then(function(j){
+        if (j && j.ok){
+          // Uno script Google non aggiornato risponde senza "scritte": la rata non è stata registrata come tale
+          if (x.tipo === 'rata' && j.scritte === undefined && !j.duplicate) throw new Error('script non aggiornato');
+          x.sent = true; x.esito = j; return true;
+        }
+        throw new Error(j && j.error || 'errore');
+      })
       .catch(function(){ return false; });
   }
 
@@ -240,6 +312,94 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
       $('amount').focus();
     });
   }
+
+  // ---- Sezione rate ----
+  function drawDurate(){
+    var box = $('rDurate'); box.innerHTML = '';
+    var cur = Number($('rDurata').value);
+    DURATE.forEach(function(n){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = n === 1 ? 'Una tantum' : n + ' mesi';
+      b.setAttribute('aria-pressed', String(cur === n));
+      b.onclick = function(){ $('rDurata').value = n; drawDurate(); anteprima(); };
+      box.appendChild(b);
+    });
+  }
+
+  function anteprima(){
+    var p = $('rAnteprima'); p.className = 'preview';
+    var n = parse($('rImporto').value), d = Math.floor(Number($('rDurata').value)), i0 = ymIdx($('rInizio').value);
+    if (n === null || !(d >= 1 && d <= 120) || i0 === null){ p.textContent = ''; return; }
+    var txt = d === 1
+      ? eur(n) + ' una volta, a ' + ymLabel(i0) + '.'
+      : eur(n) + ' × ' + d + ' = ' + eur(Math.round(n * d * 100) / 100) + ', da ' + ymLabel(i0) + ' a ' + ymLabel(i0 + d - 1) + '.';
+    var ult = ymIdx(ULTIMO_MESE);
+    var oltre = Math.min(d, Math.max(0, i0 + d - 1 - ult));
+    if (oltre > 0){
+      txt += ' Il foglio arriva a ' + ymLabel(ult) + ': ' +
+        (oltre === 1 ? "l'ultima rata non verrà scritta" : 'le ultime ' + oltre + ' rate non verranno scritte') + '.';
+      p.className = 'preview warn';
+    }
+    p.textContent = txt;
+  }
+
+  function saveRata(){
+    if (busy) return;
+    var n = parse($('rImporto').value);
+    var voce = $('rVoce').value.trim();
+    var durata = Math.floor(Number($('rDurata').value));
+    var giorno = Math.floor(Number($('rGiorno').value));
+    var inizio = $('rInizio').value;
+    $('rImportoWrap').classList.toggle('err', n === null);
+    if (n === null){ say("Scrivi l'importo di una rata, per esempio 46,63.", 'bad'); $('rImporto').focus(); return; }
+    if (!voce){ say('Scrivi cosa è la rata.', 'bad'); $('rVoce').focus(); return; }
+    if (!(durata >= 1 && durata <= 120)){ say('Indica quante rate sono, da 1 a 120.', 'bad'); $('rDurata').focus(); return; }
+    if (!(giorno >= 1 && giorno <= 31)){ say('Il giorno di addebito va da 1 a 31.', 'bad'); $('rGiorno').focus(); return; }
+    if (ymIdx(inizio) === null){ say('Scegli il mese della prima rata.', 'bad'); return; }
+
+    var x = { tipo: 'rata', id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), data: new Date().toISOString(),
+      voce: voce, importo: n, giorno: giorno, inizio: inizio, durata: durata, nota: $('rNota').value.trim(), sent: false };
+    log.push(x); store('spese-log', log.slice(-30));
+    busy = true; $('rSave').disabled = true; say('Salvo...');
+
+    send(x).then(function(ok){
+      store('spese-log', log.slice(-30));
+      busy = false; $('rSave').disabled = false;
+      if (ok){
+        var e = x.esito || {};
+        var msg = e.duplicate ? 'Questa rata era già nel foglio.'
+          : 'Rata salvata: ' + e.scritte + (e.scritte === 1 ? ' riga scritta' : ' righe scritte') + ' nei mesi.';
+        if (e.saltate) msg += ' ' + e.saltate + (e.saltate === 1 ? ' non scritta' : ' non scritte') + ' (mese senza scheda nel foglio).';
+        say(msg, 'ok');
+      } else {
+        say(CONFIG.url
+          ? 'Non sono riuscito a inviarla. Se hai appena aggiornato il sito, controlla di aver pubblicato anche la nuova versione dello script Google.'
+          : 'Salvata solo su questo telefono: manca il collegamento al foglio.', 'bad');
+      }
+      $('rImporto').value = ''; $('rVoce').value = ''; $('rDurata').value = ''; $('rGiorno').value = ''; $('rNota').value = '';
+      drawDurate(); anteprima(); drawLog();
+    });
+  }
+
+  function setView(v){
+    var rata = v === 'rata';
+    $('viewSpesa').hidden = rata; $('viewRata').hidden = !rata;
+    $('tabSpesa').setAttribute('aria-pressed', String(!rata));
+    $('tabRata').setAttribute('aria-pressed', String(rata));
+    $('titolo').textContent = rata ? 'Nuova rata' : 'Nuova spesa';
+    document.title = $('titolo').textContent;
+    say('');
+  }
+
+  $('tabSpesa').onclick = function(){ setView('spesa'); };
+  $('tabRata').onclick = function(){ setView('rata'); };
+  $('rSave').onclick = saveRata;
+  ['rImporto', 'rDurata', 'rInizio'].forEach(function(id){
+    $(id).addEventListener('input', function(){ if (id === 'rImporto') $('rImportoWrap').classList.remove('err'); if (id === 'rDurata') drawDurate(); anteprima(); });
+  });
+  $('rNota').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); saveRata(); } });
+  $('rInizio').value = oggiYm();
+  drawDurate();
 
   $('save').onclick = save;
   $('amount').addEventListener('input', function(){ $('amountWrap').classList.remove('err'); });
