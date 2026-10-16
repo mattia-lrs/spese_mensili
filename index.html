@@ -182,7 +182,7 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
 <script>
 (function(){
   var CATS = ['Cibo','Carburante','Trasporti','Svago','Casa','Salute','Altro'];
-  var PAYS = ['Carta','Contanti','Buoni pasto'];
+  var PAYS = ['Carta','Contanti'];
 
   var $ = function(id){ return document.getElementById(id); };
   function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
