@@ -36,6 +36,8 @@ body{
 }
 .app{max-width:520px;margin:0 auto;padding:20px 20px 40px}
 h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.toRiep{color:var(--accent);font-weight:600;text-decoration:none;padding:10px 0;margin-top:-10px}
 .amount{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--line);padding-bottom:6px}
 .amount:focus-within{border-color:var(--accent)}
 .amount.err{border-color:var(--bad)}
@@ -95,7 +97,7 @@ h1{margin:0 0 14px;font-size:1rem;font-weight:500;color:var(--mute)}
 <body>
 <main class="app">
   <p id="setup" class="banner" hidden>Prima di usarla, collega il foglio dalla sezione in fondo alla pagina.</p>
-  <h1 id="titolo">Nuova spesa</h1>
+  <div class="head"><h1 id="titolo">Nuova spesa</h1><a class="toRiep" href="riepilogo.html">Riepilogo</a></div>
   <div class="seg" role="group" aria-label="Cosa vuoi aggiungere">
     <button id="tabSpesa" type="button" aria-pressed="true">Spesa</button>
     <button id="tabRata" type="button" aria-pressed="false">Rata</button>
